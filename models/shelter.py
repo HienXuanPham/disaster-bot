@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List, Optional, Dict
 from pydantic import BaseModel
 
 class Shelter(BaseModel):
@@ -9,5 +9,6 @@ class Shelter(BaseModel):
     shelter_type: str
     capacity: Optional[int] = None
     amenities: List[str] = []
+    contact_info: Optional[Dict[str, str]] = None
     description: Optional[str] = None
     embedding: Optional[List[float]] = None
