@@ -5,15 +5,13 @@ from fastapi.responses import HTMLResponse
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.interval import IntervalTrigger
 import google.generativeai as genai
-import os
-from dotenv import load_dotenv
+from config import Config
 from database import db
 from data_collector import collector
 
-load_dotenv()
 
 templates = Jinja2Templates(directory="templates")
-genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
+genai.configure(api_key=Config.GEMINI_API_KEY)
 model = genai.GenerativeModel("gemini-2.0-flash")
 
 scheduler = AsyncIOScheduler()
