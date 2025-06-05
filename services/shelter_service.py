@@ -1,7 +1,6 @@
 import overpy
-from typing import List, Dict, Any
+from typing import List, Dict
 from models.shelter import Shelter
-from config import Config
 import logging
 
 logger = logging.getLogger(__name__)
@@ -11,7 +10,7 @@ class ShelterService:
     self.overpass_api = overpy.Overpass()
     self.shelters_data: List[Shelter] = []
 
-  async def extract_shelters_from_osm(self, bbox: str) -> List[Dict[str, Any]]:
+  async def extract_shelters_from_osm(self, bbox: str) -> List[Shelter]:
     query = f"""
       [out:json][timeout:25];
       (
