@@ -9,6 +9,7 @@ logger = logging.getLogger(__name__)
 class ShelterService:
   def __init__(self):
     self.overpass_api = overpy.Overpass()
+    self.shelters_data: List[Shelter] = []
 
   async def extract_shelters_from_osm(self, bbox: str) -> List[Dict[str, Any]]:
     query = f"""
@@ -34,6 +35,8 @@ class ShelterService:
         if shelter_data:
           shelters.append(shelter_data)
 
+      self.shelters_data = shelters
+
       logger.info(f"Extracted {len(shelters)} potential shelters from OSM")
       return shelters
     except Exception as e:
@@ -58,17 +61,20 @@ class ShelterService:
     address = self._build_address(tags)
     description = self._build_description(name, tags, shelter_type)
 
-    return {
-        'name': name,
-        'coordinates': {'latitude': lat, 'longitude': lon},
-        'address': address,
-        'shelter_type': shelter_type,
-        'capacity': self._extract_capacity(tags),
-        'amenities': self._extract_amenities(tags),
-        'contact_info': self._extract_contact(tags),
-        'description': description,
-        'id': element.id,
-    }
+    shelter = Shelter(
+        id=str(element.id),
+        name=name,
+        coordinates=[lon, lat],
+        address=address,
+        shelter_type=shelter_type,
+        capacity=self._extract_capacity(tags),
+        amenities=self._extract_amenities(tags),
+        contact_info=self._extract_contact(tags),
+        description=description,
+        embedding=None  # Will be filled later by embedding service
+    )
+
+    return shelter
   
   def _determine_shelter_type(self, tags: Dict[str, str]) -> str:
     emergency = tags.get("emergency", "")
