@@ -93,7 +93,7 @@ class ShelterService:
     address = []
 
     if "addr:housenumber" in tags and "addr:street" in tags:
-      address.append(f"{tags["addr:housenumber"]} {tags["addr:street"]}")
+      address.append(f"{tags['addr:housenumber']} {tags['addr:street']}")
     elif "addr:street" in tags:
       address.append(tags["addr:street"])
 
@@ -110,11 +110,11 @@ class ShelterService:
     description = [f"{name} is a {shelter_type} shelter"]
 
     if tags.get("amenity"):
-      description.append(f"classified as {tags["amenity"]}")
+      description.append(f"classified as {tags['amenity']}")
     if tags.get("description"):
       description.append(tags["description"])
     if tags.get("opening_hours"):
-      description.append(f"Open {tags["opening_hours"]}")
+      description.append(f"Open {tags['opening_hours']}")
     
     return ". ".join(description)
 
