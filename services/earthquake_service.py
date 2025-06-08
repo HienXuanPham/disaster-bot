@@ -27,7 +27,7 @@ class EarthquakeService:
               geom = feature.get("geometry", {})
               coordinates = geom.get("coordinates", [])
 
-              earthquake = self._parse_earthquake_data(props, coordinates)
+              earthquake = await self._parse_earthquake_data(props, coordinates)
 
               if earthquake:
                 earthquakes_data.append(earthquake)
