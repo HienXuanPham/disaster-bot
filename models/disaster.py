@@ -10,7 +10,7 @@ class Earthquake(BaseModel):
     description: Optional[str] = None
     severity: str
 
-    @field_validator('time', pre=True)
+    @field_validator('time', mode='before')
     def convert_timestamp(cls, v):
         if isinstance(v, int):  # milliseconds to datetime
             return datetime.fromtimestamp(v / 1000, tz=timezone.utc)
