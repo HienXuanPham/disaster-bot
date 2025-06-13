@@ -3,7 +3,6 @@ from config import Config
 from typing import List, Dict, Any
 from pydantic import BaseModel
 import logging
-from pymongo.errors import BulkWriteError
 
 logger = logging.getLogger(__name__)
 
@@ -71,12 +70,13 @@ class Database:
       })
       if not exists:
         to_insert.append(item.model_dump())
-      if to_insert:
-        await collection.insert_many(to_insert)
-        print(f"{len(to_insert)} disasters inserted (after deduplication).")
-      else:
-        print("No new disaster data to insert.")
-      
+
+    if to_insert:
+      await collection.insert_many(to_insert)
+      print(f"{len(to_insert)} disasters inserted (after deduplication).")
+    else:
+      print("No new disaster data to insert.")
+    
   async def vector_search_shelters(self, query_embedding: List[float], limit: int = 10):
     collection = self.database[Config.SHELTERS_COLLECTION]
     
