@@ -1,137 +1,147 @@
-from fastapi import FastAPI, Request
+from datetime import datetime, timezone
+from typing import Any, Dict, Optional
+from fastapi import FastAPI, HTTPException, Request
 from contextlib import asynccontextmanager
+from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.interval import IntervalTrigger
-import google.generativeai as genai
-from config import Config
-from database import db
-from data_collector import collector
+from pydantic import BaseModel
+from mongo_database import Database
+from data_fetcher import DataFetcher
+from services.ai_service import AIService
+import logging
 
+logger = logging.getLogger(__name__)
 
 templates = Jinja2Templates(directory="templates")
-genai.configure(api_key=Config.GEMINI_API_KEY)
-model = genai.GenerativeModel("gemini-2.0-flash")
+database = Database()
+data_fetcher = DataFetcher()
+ai_service = AIService()
+
+class QueryRequest(BaseModel):
+  question: str
+  latitude: Optional[float] = None
+  longitude: Optional[float] = None
+
+class QueryResponse(BaseModel):
+  answer: str
+  context: Dict[str, Any]
+  timestamp: datetime
 
 scheduler = AsyncIOScheduler()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    print("Starting Disaster Bot...")
-    await db.connect()
+  logger.info("Starting Disaster Bot...")
+  await database.connect_to_mongo()
 
-    print("Fetching initial earthquake data...")
-    await collector.fetch_and_store_earthquakes()
+  # logger.info("Fetching initial earthquake data...")
+  # earthquakes = await data_fetcher.fetch_earthquakes()
 
-    scheduler.add_job(
-        collector.fetch_and_store_earthquakes,
-        trigger=IntervalTrigger(days=1),
-        id="earthquake_collector",
-        name="Collect earthquake data everyday",
-        replace_existing=True
-    )
+  # if earthquakes:
+  #   await database.insert_disaster_data(earthquakes)
+  #   logger.info(f"Inserted {len(earthquakes)} earthquakes")
 
-    scheduler.start()
-    print("Automatic data collection started")
-    print("System ready!")
+  # scheduler.add_job(
+  #   data_fetcher.fetch_earthquakes,
+  #   trigger=IntervalTrigger(days=1),
+  #   id="earthquake_collector",
+  #   name="Collect earthquake data everyday",
+  #   replace_existing=True
+  # )
 
-    yield
+  # logger.info("Fetching initial shelter data...")
+  # shelters = await data_fetcher.fetch_osm_shelters()
 
-    print("Shutting down...")
-    scheduler.shutdown()
-    print("System shutdown complete")
+  # if shelters:
+  #   descriptions = [shelter.description for shelter in shelters]
+  #   embeddings = await ai_service.generate_embeddings(descriptions)
+
+  #   for i, shelter in enumerate(shelters):
+  #     shelter.embedding = embeddings[i]
+
+  #   await database.insert_shelter_data(shelters)
+  #   logger.info(f"Insert {len(shelters)} shelters")
+
+  # scheduler.add_job(
+  #   data_fetcher.fetch_osm_shelters,
+  #   trigger=IntervalTrigger(days=1),
+  #   id="earthquake_collector",
+  #   name="Collect shelter data everyday",
+  #   replace_existing=True
+  # )
+
+  scheduler.start()
+  logger.info("Automatic data collection started")
+  logger.info("System ready!")
+
+  yield
+
+  logger.info("Shutting down...")
+  scheduler.shutdown()
+  logger.info("System shutdown complete")
 
 app = FastAPI(lifespan=lifespan)
 
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+app.mount("/script", StaticFiles(directory="script"), name="script")
+
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
-    return templates.TemplateResponse("index.html", {"request": request})
+  return templates.TemplateResponse("index.html", {"request": request})
 
-@app.get("/earthquakes")
-async def get_earthquakes():
-    earthquakes = await db.get_recent_disasters(hours=24, limit=10)
+@app.post("/api/query", response_model=QueryResponse)
+async def query_bot(request:QueryRequest):
+  print("Incoming request:", request)
+  try:
+    recent_disasters = await database.get_recent_disasters(hours=24)
+
+    nearby_shelters = []
+    if request.latitude and request.longitude:
+      nearby_shelters = await database.find_shelters_near_location(request.latitude, request.longitude, radius_km=50)
     
-    return {"earthquakes": earthquakes, "count": len(earthquakes)}
+    if not nearby_shelters:
+      query_embedding = await ai_service.generate_embeddings([request.question])
+      print(f"query_embedding: {query_embedding}")
+      if query_embedding:
+        nearby_shelters = await database.vector_search_shelters(query_embedding[0], limit=10)
+    print(f"Nearby shelters: {nearby_shelters}")
 
-@app.post("/ask")
-async def ask_ai(question: dict):
-    user_question = question["question"]
-    
-    recent_disasters = await db.get_recent_disasters(hours=48, limit=10)
-
-    search_results = await db.search_disasters(user_question, limit=5)
-
-    prompt = f"""
-        You are a disaster information assistant with access to real-time data.
-        
-        RECENT DISASTERS (last 48 hours):
-        {recent_disasters}
-        
-        SEARCH RESULTS for "{user_question}":
-        {search_results}
-        
-        USER QUESTION: {user_question}
-        
-        Please provide a helpful, accurate answer based on this real disaster data. 
-        Include specific details like locations, magnitudes, and times when relevant.
-        Focus on safety and practical information.
-    """
-
-    try:
-        response = model.generate_content(prompt)
-        return {
-            "answer": response.text,
-            "data_sources": f"{len(recent_disasters)} recent disasters, {len(search_results)} search matches"
-        }
-    except Exception as e:
-        return {"answer": f"Sorry, I encountered an error: {str(e)}"}
-    
-@app.post("/search")
-async def search_disaster(query: dict):
-    search_term = query["search"]
-
-    results = await db.search_disasters(search_term, limit=10)
-
-    if results:
-        prompt = f"""
-            Here are disasters matching the search "{search_term}":
-            
-            {results}
-            
-            Please provide a clear, helpful summary of these disasters.
-            Include key details like locations, magnitudes, and when they occurred.
-        """
-        
-        try:
-            ai_response = model.generate_content(prompt)
-            return {
-                "results": results,
-                "summary": ai_response.text,
-                "count": len(results)
-            }
-        except Exception as e:
-            return {
-                "results": results,
-                "summary": f"Found {len(results)} disasters matching your search",
-                "count": len(results)
-            }
-    else:
-        return {
-            "results": [],
-            "summary": "No disasters found matching your search terms",
-            "count": 0
-        }
-
-@app.get("/system-status")
-async def system_status():
-    recent_count = len(await db.get_recent_disasters(hours=12))
-    total_count = len(await db.get_recent_disasters(hours=24))
-
-    return {
-        "status": "running",
-        "recent_disasters_12h": recent_count,
-        "total_disasters_day": total_count,
-        "auto_collection": "active" if scheduler.running else "stopped"
+    context = {
+      "recent_disasters": recent_disasters,
+      "nearby_shelters": nearby_shelters,
+      "query_location":{
+        "latitude": request.latitude,
+        "longitude": request.longitude
+      } if request.latitude and request.longitude else None
     }
-# Run with: uvicorn main:app --reload
+
+    answer = ai_service.query_gemini(request.question, context)
+
+    return QueryResponse(
+      answer=answer,
+      context=context,
+      timestamp=datetime.now(timezone.utc)
+    )
+  except Exception as e:
+    logger.error("Error processing query", exc_info=True)
+    raise HTTPException(status_code=500, detail="Internal server error")
+
+@app.get("/api/disasters")
+async def get_recent_disasters():
+  disasters = await database.get_recent_disasters(hours=24)
+  return {"disasters": disasters, "count": len(disasters)}
+
+@app.get("/api/shelters")
+async def get_nearby_shelters(lat: float, lon: float, radius: float = 50):
+  shelters = await database.find_shelters_near_location(lat, lon, radius)
+  return {"shelters": shelters, "count": len(shelters)}
