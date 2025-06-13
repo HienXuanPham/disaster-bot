@@ -15,8 +15,7 @@ class DataFetcher:
   async def fetch_osm_shelters(self, bbox: str = None) -> List[Shelter]:
     try:
       if not bbox:
-        bbox = "24.396308,-125.000000,49.384358,-66.934570" # Default for entire United States (including the contiguous US, but excluding Alaska, Hawaii, and territories)
-      
+        bbox = "24.396308,-125.000000,49.384358,-66.934570" # Default
       logger.info(f"Fetching shelters for bbox: {bbox}")
 
       shelters_data = await self.shelter_service.extract_shelters_from_osm(bbox)
