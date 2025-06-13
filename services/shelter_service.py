@@ -43,7 +43,7 @@ class ShelterService:
       return []
   
   def _parse_osm_element(self, element) -> Dict[str, any]:
-    tags = element.tags
+    tags = element.tags or {}
 
     if hasattr(element, "lat") and hasattr(element, "lon"):
       lat, lon = float(element.lat), float(element.lon)
