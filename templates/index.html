@@ -1,129 +1,62 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Disaster AI Helper</title>
-    <style>
-        body { font-family: Arial, sans-serif; margin: 40px; }
-        .container { max-width: 800px; margin: 0 auto; }
-        .status { background: #e8f5e8; padding: 10px; border-radius: 5px; margin-bottom: 20px; }
-        .question-box { margin: 20px 0; }
-        input[type="text"] { width: 70%; padding: 10px; }
-        button { padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; }
-        .response { background: #f8f9fa; padding: 15px; border-radius: 5px; margin: 10px 0; }
-        .earthquake-item { border-left: 3px solid #dc3545; padding-left: 10px; margin: 10px 0; }
-    </style>
+    <meta charset="UTF-8">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+        crossorigin=""/>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+        crossorigin=""></script>
+    <title>Disaster Response Q&A Bot</title>
 </head>
 <body>
     <div class="container">
-        <h1>🌍 Disaster AI Helper</h1>
-        <div id="status" class="status">Loading system status...</div>
-        
-        <div class="question-box">
-            <h3>Ask AI About Disasters:</h3>
-            <input type="text" id="question" placeholder="e.g., 'What earthquakes happened today?'">
-            <button onclick="askAI()">Ask AI</button>
+        <div class="header">
+            <h1>Disaster Response Q&A Bot</h1>
+            <p>Get information about disasters and emergency shelters</p>
         </div>
-        <div id="aiResponse"></div>
-        
-        <div class="question-box">
-            <h3>Search Disaster Database:</h3>
-            <input type="text" id="searchTerm" placeholder="e.g., 'California earthquake'">
-            <button onclick="searchDisasters()">Search</button>
-        </div>
-        <div id="searchResults"></div>
-        
-        <div>
-            <button onclick="showRecentEarthquakes()">Show Recent Earthquakes</button>
-            <div id="earthquakeList"></div>
+
+        <div class="main-content">
+            <div class="chat-section">
+                <h2>Ask Questions</h2>
+                <div class="status" id="status">
+                    Ready to help! You can ask about nearby shelters and recent disasters.
+                </div>
+
+                <div class="chat-container" id="chatContainer">
+                    <div class="message bot-message">
+                        Hello! I'm here to help you with disaster response information.
+                        You can ask me about:
+                        <ul>
+                            <li>Nearby emergency shelters</li>
+                            <li>Recent earthquakes</li>
+                            <li>Emergency procedures</li>
+                            <li>Safety recommendations</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="loading" id="loading"></div>
+
+                <div class="input-group">
+                    <input type="text" id="questionInput" placeholder="Ask me about disasters or shelters..." />
+                    <button id="sendBtn" onclick="askQuestion()">Send</button>
+                    <button id="locationBtn" class="location-btn" onclick="getLocation()">Use My Location</button>
+                </div>
+
+                <div class="map-section">
+                    <h2>Disaster Map</h2>
+                    <div id="map" style="width: 100%; height: 400px"></div>
+
+                    <div class="disaster-list">
+                        <h3>Recent Disasters</h3>
+                        <div id="disasterList">Loading recent disasters...</div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
-
-    <script>
-        async function updateStatus() {
-            try {
-                const response = await fetch("/system-status");
-                const data = await response.json();
-                document.getElementById("status").innerHTML = `
-                    System Status: ${data.status} |
-                    Recent disasters (12h): ${data.recent_disasters_12h} |
-                    24 hours: ${data.total_disasters_day} |
-                    Auto-collection: ${data.auto_collection}
-                `;
-            } catch (error) {
-                document.getElementById("status").innerHTML = "System status unavailable";
-            }
-        }
-
-        async function askAI() {
-            const question = document.getElementById("question").value;
-            if(!question) return;
-
-            document.getElementById("aiResponse").innerHTML = "🤔 AI is thinking...";
-
-            try {
-                const response = await fetch("/ask", {
-                    method: "POST",
-                    headers: {"Content-Type": "application/json"},
-                    body: JSON.stringify({question: question})
-                });
-                const data = await response.json();
-
-                document.getElementById("aiResponse").innerHTML = `
-                    <div class="response">
-                        <strong>🤖 AI Response:</strong><br>
-                        ${data.answer}<br>
-                        <small><em>Sources: ${data.data_sources}</em></small>
-                    </div>
-                `;
-            } catch(error) {
-                document.getElementById("aiResponse").innerHTML = "❌ Error getting AI response"
-            }
-        }
-
-        async function searchDisasters() {
-            const searchTerm = document.getElementById("searchTerm").value;
-            if (!searchTerm) return;
-
-            try {
-                const response = await fetch("/search",{
-                    method: "POST",
-                    headers: {"Content-Type": "application/json"},
-                    body: JSON.stringify({search: searchTerm})
-                });
-                const data = await response.json();
-
-                let html = `<div class="response"><strong>🔍 Search Results (${data.count}):</strong><br>${data.summary}</div>`;
-                
-                document.getElementById('searchResults').innerHTML = html;
-            } catch (error) {
-                document.getElementById("searchResults").innerHTML = "❌ Error searching";
-            }
-        }
-
-        async function showRecentEarthquakes() {
-            try {
-                const response = await fetch("/earthquakes");
-                const data = await response.json();
-
-                let html = `<h4>Recent Earthquakes (${data.count}):</h4>`;
-                data.earthquakes.forEach(eq => {
-                    const date = new Date(eq.stored_at).toLocaleString();
-                    html += `
-                        <div class="earthquake-item">
-                            <strong>${eq.place}</strong> - Magnitude: ${eq.magnitude}<br>
-                            <small>Severity: ${eq.severity} | Stored: ${date}</small>
-                        </div>
-                    `;
-                });
-                
-                document.getElementById("earthquakeList").innerHTML = html;
-            } catch (error) {
-                document.getElementById("earthquakeList").innerHTML = "❌ Error loading earthquakes";
-            }
-        }
-
-        updateStatus();
-        setInterval(updateStatus, 60000);
-    </script>
+    <script src="/script/script.js"></script>
 </body>
 </html>
