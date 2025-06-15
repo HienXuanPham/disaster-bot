@@ -1,6 +1,6 @@
 from motor.motor_asyncio import AsyncIOMotorClient
 from config import Config
-from typing import List, Dict, Any
+from typing import List
 from pydantic import BaseModel
 import logging
 
@@ -35,8 +35,6 @@ class Database:
       )
     except Exception as e:
       logger.error(f"Disasters collection might already exist: {e}")
-  
-  # TODO: Create vector search index for shelters in MongoDB Atlas
 
   async def insert_disaster_data(self, data: List[BaseModel]):
     if data:
@@ -66,7 +64,7 @@ class Database:
 
     for item in data:
       exists = await collection.find_one({
-        "coordinates": item.coordinates
+        "locations": item.locations
       })
       if not exists:
         to_insert.append(item.model_dump())
