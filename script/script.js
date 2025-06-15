@@ -122,13 +122,16 @@ async function loadNearbyShelters() {
     shelterMarkers = [];
 
     data.shelters.forEach((shelter) => {
-      const coords = shelter.location.coordinates;
+      const coords = shelter.locations["coordinates"];
       const lat = coords[1];
       const lon = coords[0];
       console.log(shelter);
+
+      let icon = "🏠";
+
       const marker = L.marker([lat, lon], {
         icon: L.divIcon({
-          html: "🏠",
+          html: icon,
           iconSize: [20, 20],
           className: "shelter-icon",
         }),
@@ -223,17 +226,6 @@ function addMessage(message, sender) {
 
 document.addEventListener("DOMContentLoaded", function () {
   initMap();
-
-  // document.getElementById("sendBtn").addEventListener("click", askQuestion);
-  // document.getElementById("locationBtn").addEventListener("click", getLocation);
-
-  // document
-  //   .getElementById("questionInput")
-  //   .addEventListener("keypress", function (e) {
-  //     if (e.key === "Enter") {
-  //       askQuestion();
-  //     }
-  //   });
 
   // Refresh disaster data every 10 minutes
   setInterval(loadRecentDisasters, 600000);
