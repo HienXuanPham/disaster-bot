@@ -4,7 +4,6 @@ from fastapi import FastAPI, HTTPException, Request
 from contextlib import asynccontextmanager
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.interval import IntervalTrigger
@@ -38,41 +37,20 @@ async def lifespan(app: FastAPI):
   logger.info("Starting Disaster Bot...")
   await database.connect_to_mongo()
 
-  # logger.info("Fetching initial earthquake data...")
-  # earthquakes = await data_fetcher.fetch_earthquakes()
+  logger.info("Fetching initial earthquake data...")
+  earthquakes = await data_fetcher.fetch_earthquakes()
 
-  # if earthquakes:
-  #   await database.insert_disaster_data(earthquakes)
-  #   logger.info(f"Inserted {len(earthquakes)} earthquakes")
+  if earthquakes:
+    await database.insert_disaster_data(earthquakes)
+    logger.info(f"Inserted {len(earthquakes)} earthquakes")
 
-  # scheduler.add_job(
-  #   data_fetcher.fetch_earthquakes,
-  #   trigger=IntervalTrigger(days=1),
-  #   id="earthquake_collector",
-  #   name="Collect earthquake data everyday",
-  #   replace_existing=True
-  # )
-
-  # logger.info("Fetching initial shelter data...")
-  # shelters = await data_fetcher.fetch_osm_shelters()
-
-  # if shelters:
-  #   descriptions = [shelter.description for shelter in shelters]
-  #   embeddings = await ai_service.generate_embeddings(descriptions)
-
-  #   for i, shelter in enumerate(shelters):
-  #     shelter.embedding = embeddings[i]
-
-  #   await database.insert_shelter_data(shelters)
-  #   logger.info(f"Insert {len(shelters)} shelters")
-
-  # scheduler.add_job(
-  #   data_fetcher.fetch_osm_shelters,
-  #   trigger=IntervalTrigger(days=1),
-  #   id="earthquake_collector",
-  #   name="Collect shelter data everyday",
-  #   replace_existing=True
-  # )
+  scheduler.add_job(
+    data_fetcher.fetch_earthquakes,
+    trigger=IntervalTrigger(days=1),
+    id="earthquake_collector",
+    name="Collect earthquake data everyday",
+    replace_existing=True
+  )
 
   scheduler.start()
   logger.info("Automatic data collection started")
@@ -86,13 +64,8 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+app.mount("/style", StaticFiles(directory="style"), name="style")
+
 app.mount("/script", StaticFiles(directory="script"), name="script")
 
 @app.get("/", response_class=HTMLResponse)
