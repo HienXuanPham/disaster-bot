@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+import os
 from typing import Any, Dict, Optional
 from fastapi import FastAPI, HTTPException, Request
 from contextlib import asynccontextmanager
@@ -8,6 +9,7 @@ from fastapi.responses import HTMLResponse
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.interval import IntervalTrigger
 from pydantic import BaseModel
+import uvicorn
 from mongo_database import Database
 from data_fetcher import DataFetcher
 from services.ai_service import AIService
@@ -37,20 +39,20 @@ async def lifespan(app: FastAPI):
   logger.info("Starting Disaster Bot...")
   await database.connect_to_mongo()
 
-  logger.info("Fetching initial earthquake data...")
-  earthquakes = await data_fetcher.fetch_earthquakes()
+  # logger.info("Fetching initial earthquake data...")
+  # earthquakes = await data_fetcher.fetch_earthquakes()
 
-  if earthquakes:
-    await database.insert_disaster_data(earthquakes)
-    logger.info(f"Inserted {len(earthquakes)} earthquakes")
+  # if earthquakes:
+  #   await database.insert_disaster_data(earthquakes)
+  #   logger.info(f"Inserted {len(earthquakes)} earthquakes")
 
-  scheduler.add_job(
-    data_fetcher.fetch_earthquakes,
-    trigger=IntervalTrigger(days=1),
-    id="earthquake_collector",
-    name="Collect earthquake data everyday",
-    replace_existing=True
-  )
+  # scheduler.add_job(
+  #   data_fetcher.fetch_earthquakes,
+  #   trigger=IntervalTrigger(days=1),
+  #   id="earthquake_collector",
+  #   name="Collect earthquake data everyday",
+  #   replace_existing=True
+  # )
 
   scheduler.start()
   logger.info("Automatic data collection started")
@@ -118,3 +120,7 @@ async def get_recent_disasters():
 async def get_nearby_shelters(lat: float, lon: float, radius: float = 50):
   shelters = await database.find_shelters_near_location(lat, lon, radius)
   return {"shelters": shelters, "count": len(shelters)}
+
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 8080))
+    uvicorn.run("main:app", host="0.0.0.0", port=port)

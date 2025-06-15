@@ -14,3 +14,5 @@ class Config:
     EARTHQUAKES_COLLECTION = "earthquakes"
     DISASTERS_COLLECTION = "disasters"
     VECTOR_INDEX_NAME = "shelter_vector_index"
+
+    PORT = int(os.getenv("PORT", 8080))
