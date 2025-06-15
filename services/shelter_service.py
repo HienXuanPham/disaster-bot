@@ -60,17 +60,18 @@ class ShelterService:
     address = self._build_address(tags)
     description = self._build_description(name, tags, shelter_type)
 
-    shelter = Shelter(
+    shelter = Shelter.from_coordinates(
+        lat=lat,
+        lon=lon,
         id=str(element.id),
         name=name,
-        coordinates=[lon, lat],
         address=address,
         shelter_type=shelter_type,
         capacity=self._extract_capacity(tags),
         amenities=self._extract_amenities(tags),
         contact_info=self._extract_contact(tags),
         description=description,
-        embedding=None  # Will be filled later by embedding service
+        embedding=None
     )
 
     return shelter
