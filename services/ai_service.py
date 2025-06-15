@@ -1,3 +1,4 @@
+import re
 import google.generativeai as genai
 from typing import List, Dict, Any
 from config import Config
@@ -33,7 +34,7 @@ class AIService:
       full_prompt = self.build_prompt(prompt, context)
       
       response = self.gemini_model.generate_content(full_prompt)
-      return response.text
+      return self.clean_response(response.text)
     
     except Exception as e:
       print(f"Error querying Gemini: {e}")
@@ -84,8 +85,55 @@ class AIService:
       - Keep responses concise but informative
       - If you don't have specific information, direct them to call 911 or local emergency services
 
+      SHELTER-SPECIFIC GUIDANCE:
+      - When discussing shelters, always mention the shelter name, address, and key details (capacity, amenities, contact info)
+      - If user asks about shelters in a specific city/area, focus only on shelters in that location
+      - Provide practical information like:
+        * What amenities are available (food, medical care, etc.)
+        * Capacity and availability status
+        * How to get there or contact information
+        * Any special requirements or restrictions
+      - If multiple shelters are available, help user choose based on their specific needs
+      - If no shelters are found in the requested area, suggest:
+        * Expanding search radius to nearby areas
+        * Contacting local emergency services for the most current information
+        * Checking with local Red Cross or emergency management offices
+      - Always remind users to call ahead when possible to confirm availability and requirements
+      - If shelters are at capacity or have special requirements, mention this clearly
+
+      LOCATION-SPECIFIC RESPONSES:
+      - When user mentions a specific city/area, acknowledge their location in your response
+      - If shelter data is available for their city, be specific about which shelters serve that area
+      - If user's location doesn't have shelters in our database, be honest about the limitation
+      - Suggest nearby areas that might have available shelters
+      - I shelters are Unknown, don't mention them
+      - Always encourage contacting local authorities for the most up-to-date information
+
+      SAFETY REMINDERS:
+      - If you don't have specific information, direct them to call 911 or local emergency services
+      - Emphasize the importance of following evacuation orders
+      - Mention that official emergency services have the most current information
+      - If situation seems urgent, prioritize immediate safety over shelter research
+
       USER QUESTION: {user_question}
 
       RESPONSE:"""
     
     return prompt
+
+  def clean_response(self, text):
+    text = re.sub(r'\*\*(.*?)\*\*', r'\1', text)  # Bold
+    text = re.sub(r'__(.*?)__', r'\1', text)       # Bold alt
+    text = re.sub(r'\*(.*?)\*', r'\1', text)       # Italic
+    text = re.sub(r'_(.*?)_', r'\1', text)         # Italic alt
+    
+    # Fix escaped underscores in compound words
+    text = re.sub(r'(\w)\\?_(\w)', r'\1 \2', text)
+    
+    # Remove remaining markdown characters
+    text = re.sub(r'[*_#\\]', '', text)
+    
+    # Remove any remaining single * or _
+    text = re.sub(r'[*_]', '', text)
+    
+    return text
