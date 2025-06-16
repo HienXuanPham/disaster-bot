@@ -1,3 +1,4 @@
+import certifi
 from motor.motor_asyncio import AsyncIOMotorClient
 from config import Config
 from typing import List
@@ -12,7 +13,16 @@ class Database:
     self.database = None
 
   async def connect_to_mongo(self):
-    self.client = AsyncIOMotorClient(Config.MONGODB_URL)
+    self.client = AsyncIOMotorClient(
+                Config.MONGODB_URL,
+                ssl=True,
+                tlsCAFile=certifi.where(),
+                serverSelectionTimeoutMS=10000,
+                connectTimeoutMS=10000,
+                socketTimeoutMS=10000,
+                maxPoolSize=10,
+                retryWrites=True
+              )
     self.database = self.client[Config.MONGODB_DATABASE]
 
     try:
