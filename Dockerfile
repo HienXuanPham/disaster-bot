@@ -1,8 +1,13 @@
 # Use official Python image
 FROM python:3.11-slim-bullseye
 
-# Update system packages to reduce vulnerabilities
-RUN apt-get update && apt-get upgrade -y && apt-get clean && rm -rf /var/lib/apt/lists/*
+# Add system dependencies required for TLS/SSL
+RUN apt-get update && \
+  apt-get install -y --no-install-recommends \
+  libssl-dev \
+  ca-certificates \
+  gcc \
+  && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Set work directory
 WORKDIR /app
