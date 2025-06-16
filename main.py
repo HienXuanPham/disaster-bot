@@ -39,20 +39,16 @@ async def lifespan(app: FastAPI):
   logger.info("Starting Disaster Bot...")
   await database.connect_to_mongo()
 
-  # logger.info("Fetching initial earthquake data...")
-  # earthquakes = await data_fetcher.fetch_earthquakes()
+  import asyncio
+  asyncio.create_task(data_fetcher.fetch_earthquakes_and_insert())
 
-  # if earthquakes:
-  #   await database.insert_disaster_data(earthquakes)
-  #   logger.info(f"Inserted {len(earthquakes)} earthquakes")
-
-  # scheduler.add_job(
-  #   data_fetcher.fetch_earthquakes,
-  #   trigger=IntervalTrigger(days=1),
-  #   id="earthquake_collector",
-  #   name="Collect earthquake data everyday",
-  #   replace_existing=True
-  # )
+  scheduler.add_job(
+    data_fetcher.fetch_earthquakes_and_insert,
+    trigger=IntervalTrigger(days=1),
+    id="earthquake_collector",
+    name="Collect earthquake data everyday",
+    replace_existing=True
+  )
 
   scheduler.start()
   logger.info("Automatic data collection started")
