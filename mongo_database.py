@@ -1,4 +1,4 @@
-import certifi
+import ssl
 from motor.motor_asyncio import AsyncIOMotorClient
 from config import Config
 from typing import List
@@ -16,12 +16,11 @@ class Database:
     self.client = AsyncIOMotorClient(
                 Config.MONGODB_URL,
                 ssl=True,
-                tlsCAFile=certifi.where(),
+                ssl_cert_reqs=ssl.CERT_NONE,
+                tlsAllowInvalidCertificates=True,
                 serverSelectionTimeoutMS=10000,
                 connectTimeoutMS=10000,
-                socketTimeoutMS=10000,
-                maxPoolSize=10,
-                retryWrites=True
+                socketTimeoutMS=10000
               )
     self.database = self.client[Config.MONGODB_DATABASE]
 
