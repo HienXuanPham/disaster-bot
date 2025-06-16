@@ -1,4 +1,3 @@
-import ssl
 from motor.motor_asyncio import AsyncIOMotorClient
 from config import Config
 from typing import List
@@ -15,12 +14,8 @@ class Database:
   async def connect_to_mongo(self):
     self.client = AsyncIOMotorClient(
                 Config.MONGODB_URL,
-                ssl=True,
-                ssl_cert_reqs=ssl.CERT_NONE,
-                tlsAllowInvalidCertificates=True,
-                serverSelectionTimeoutMS=10000,
-                connectTimeoutMS=10000,
-                socketTimeoutMS=10000
+                tls=True,
+                tlsAllowInvalidCertificates=True
               )
     self.database = self.client[Config.MONGODB_DATABASE]
 
