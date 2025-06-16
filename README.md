@@ -44,7 +44,7 @@ pip install -r requirements.txt
 
 ```bash
 # Create .env with your credentials
-MONGODB_URL=mongodb+srv://username:password@cluster.mongodb.net
+MONGODB_URL=mongodb+srv://<username>:<password>@cluster.mongodb.net
 GEMINI_API_KEY=your-gemini-api-key
 GOOGLE_CLOUD_PROJECT=your-project-id
 MONGODB_DATABASE="disaster_bot"
