@@ -4,8 +4,11 @@ from services.shelter_service import ShelterService
 from services.earthquake_service import EarthquakeService
 from models.shelter import Shelter
 from models.disaster import Earthquake
+from mongo_database import Database
 
 logger = logging.getLogger(__name__)
+
+database = Database()
 
 class DataFetcher:
   def __init__(self):
@@ -26,11 +29,12 @@ class DataFetcher:
       logger.error(f"Error fetching OSM shelters: {e}")
       return []
     
-  async def fetch_earthquakes(self) -> List[Earthquake]:
+  async def fetch_earthquakes_and_insert(self) -> List[Earthquake]:
     try:
       earthquakes_data = await self.earthquake_service.fetch_earthquakes_data()
 
-      logger.info(f"Successfully fetched {len(earthquakes_data)} earthquakes data")
+      if earthquakes_data:
+        await database.insert_disaster_data(earthquakes_data)
       return earthquakes_data
     except Exception as e:
       logger.error(f"Error fetching USGS data: {e}")
