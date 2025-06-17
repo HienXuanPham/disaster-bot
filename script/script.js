@@ -125,7 +125,6 @@ async function loadNearbyShelters() {
       const coords = shelter.locations["coordinates"];
       const lat = coords[1];
       const lon = coords[0];
-      console.log(shelter);
 
       let icon = "🏠";
 
