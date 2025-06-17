@@ -12,11 +12,7 @@ class Database:
     self.database = None
 
   async def connect_to_mongo(self):
-    self.client = AsyncIOMotorClient(
-                Config.MONGODB_URL,
-                tls=True,
-                tlsAllowInvalidCertificates=True
-              )
+    self.client = AsyncIOMotorClient(Config.MONGODB_URL)
     self.database = self.client[Config.MONGODB_DATABASE]
 
     try:

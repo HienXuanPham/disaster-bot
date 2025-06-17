@@ -39,11 +39,17 @@ async def lifespan(app: FastAPI):
   logger.info("Starting Disaster Bot...")
   await database.connect_to_mongo()
 
-  import asyncio
-  asyncio.create_task(data_fetcher.fetch_earthquakes_and_insert())
+  """
+  TODO: Create Google Cloud function for data fetching
+  logger.info("Fetching initial earthquake data...")
+  earthquakes = await data_fetcher.fetch_earthquakes()
+
+  if earthquakes:
+    await database.insert_disaster_data(earthquakes)
+    logger.info(f"Inserted {len(earthquakes)} earthquakes")
 
   scheduler.add_job(
-    data_fetcher.fetch_earthquakes_and_insert,
+    data_fetcher.fetch_earthquakes,
     trigger=IntervalTrigger(days=1),
     id="earthquake_collector",
     name="Collect earthquake data everyday",
@@ -52,8 +58,10 @@ async def lifespan(app: FastAPI):
 
   scheduler.start()
   logger.info("Automatic data collection started")
-  logger.info("System ready!")
+  """
 
+  logger.info("System ready!")
+  
   yield
 
   logger.info("Shutting down...")
@@ -82,10 +90,8 @@ async def query_bot(request:QueryRequest):
     
     if not nearby_shelters:
       query_embedding = await ai_service.generate_embeddings([request.question])
-      print(f"query_embedding: {query_embedding}")
       if query_embedding:
         nearby_shelters = await database.vector_search_shelters(query_embedding[0], limit=10)
-    print(f"Nearby shelters: {nearby_shelters}")
 
     context = {
       "recent_disasters": recent_disasters,
